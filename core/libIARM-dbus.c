@@ -332,7 +332,7 @@ DBusHandlerResult dbusCallHandler(DBusConnection *connection, DBusMessage *msg, 
         dbus_message_iter_recurse(&arglist, &arraylist);
         dbus_message_iter_get_fixed_array(&arraylist, (void *)&callArg, &size);
         callArg += 12;
-        callInfo->handler(callInfo->callCtx, 0, (void *)callArg, (unsigned int) msg);
+        callInfo->handler(callInfo->callCtx, 0, (void *)callArg, (unsigned long) msg);
         return DBUS_HANDLER_RESULT_HANDLED;   
         }
     else if (!dbus_message_has_interface(msg, "iarm.method.Type"))
