@@ -69,6 +69,8 @@ extern "C"
 #define METHOD_CALL_EXIT (1)
 #define DISPATCH_EXIT (1<<1)
 
+#define IARM_BUS_NAME_MAX_LEN 100
+
 int mallocLocalCount;
 int freeLocalCount;
 typedef struct _Component_Node_t {
@@ -89,7 +91,9 @@ typedef struct _IARM_Ctxt_t {
      pthread_mutex_t mutexConn;
      pthread_cond_t condConn;
      int            exitStatus;
-     char           busName[100];
+     char           busName[IARM_BUS_NAME_MAX_LEN];
+     char           busNameEvent[IARM_BUS_NAME_MAX_LEN];
+     char           busNameMethod[IARM_BUS_NAME_MAX_LEN];
      GList *        eventRegistry; 
 } IARM_Ctx_t;
 
@@ -1066,7 +1070,7 @@ IARM_Result_t IARM_Init(const char *groupName, const char *memberName)
         dbus_connection_set_exit_on_disconnect(cctx->connEvent,FALSE);
 
 
-        dbus_error_init(&err);
+        dbus_error_free(&err);
 
         /* to avoid deadlock in nested RPC calls use seperate connection */
         cctx->connMethodCall = dbus_bus_get_private(DBUS_BUS_SYSTEM, &err);
@@ -1082,13 +1086,14 @@ IARM_Result_t IARM_Init(const char *groupName, const char *memberName)
 
         dbus_connection_set_exit_on_disconnect(cctx->connMethodCall,FALSE);
 
-        strcpy(busName, "process.iarm.");
-        strcpy(&busName[13], memberName);
-            
+        //strcpy(busName, "process.iarm.");
+        //strcpy(&busName[13], memberName);
+        snprintf(busName, IARM_BUS_NAME_MAX_LEN - 1, "%s%s", "process.iarm.", memberName);
+        dbus_error_free(&err);
         ret = dbus_bus_request_name(cctx->conn, busName, DBUS_NAME_FLAG_REPLACE_EXISTING | DBUS_NAME_FLAG_ALLOW_REPLACEMENT, &err);
-            
+
         if ((dbus_error_is_set(&err)) || (DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER != ret))
-        { 
+        {
             log("%s Error Request to set the Dbus name failed\n", __FUNCTION__);
             dbus_error_free(&err); 
             retCode = IARM_RESULT_IPCCORE_FAIL;
@@ -1096,6 +1101,31 @@ IARM_Result_t IARM_Init(const char *groupName, const char *memberName)
         }
 
         strcpy(cctx->busName, busName);
+
+        dbus_error_free(&err); 
+        snprintf(busName, IARM_BUS_NAME_MAX_LEN - 1, "%s%s%s", "process.iarm.", memberName, ".Event");
+        ret = dbus_bus_request_name(cctx->connEvent, busName, DBUS_NAME_FLAG_REPLACE_EXISTING | DBUS_NAME_FLAG_ALLOW_REPLACEMENT, &err);
+        if ((dbus_error_is_set(&err)) || (DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER != ret))
+        {
+            log("%s Error Request to set the Dbus name on connEvent failed\n", __FUNCTION__);
+            dbus_error_free(&err); 
+            retCode = IARM_RESULT_IPCCORE_FAIL;
+            goto error;
+        }
+        strcpy(cctx->busNameEvent, busName);
+
+        dbus_error_free(&err); 
+        snprintf(busName, IARM_BUS_NAME_MAX_LEN - 1, "%s%s%s", "process.iarm.", memberName, ".Method");
+        ret = dbus_bus_request_name(cctx->connMethodCall, busName, DBUS_NAME_FLAG_REPLACE_EXISTING | DBUS_NAME_FLAG_ALLOW_REPLACEMENT, &err);
+        if ((dbus_error_is_set(&err)) || (DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER != ret))
+        {
+            log("%s Error Request to set the Dbus name on connMethodCall failed\n", __FUNCTION__);
+            dbus_error_free(&err); 
+            retCode = IARM_RESULT_IPCCORE_FAIL;
+            goto error;
+        }
+        strcpy(cctx->busNameMethod, busName);
+        dbus_error_free(&err); 
 
         /* Add filter rules for methods and events */
         dbus_bus_add_match(cctx->conn, "interface='iarm.signal.Type'", NULL);
