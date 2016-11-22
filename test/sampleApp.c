@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
      * Register and Connect to the IARM Bus.
      *
      */
-    IARM_Bus_Init("Sample App");
+    IARM_Bus_Init("SampleApp");
     IARM_Bus_Connect();
 
     /*
