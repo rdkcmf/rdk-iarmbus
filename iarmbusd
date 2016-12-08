@@ -1,0 +1,30 @@
+# ============================================================================
+# RDK MANAGEMENT, LLC CONFIDENTIAL AND PROPRIETARY
+# ============================================================================
+# This file (and its contents) are the intellectual property of RDK Management, LLC.
+# It may not be used, copied, distributed or otherwise  disclosed in whole or in
+# part without the express written permission of RDK Management, LLC.
+# ============================================================================
+# Copyright (c) 2014 RDK Management, LLC. All rights reserved.
+# ============================================================================
+#!/bin/sh
+
+ulimit -c unlimited
+
+case "$1" in
+    'start')
+	touch /var/volatile/log/iarmbusd.log
+        echo "Starting IARMDaemonMain" >> /var/volatile/log/iarmbusd.log
+        /usr/bin/IARMDaemonMain >> /var/volatile/log/iarmbusd.log 2>&1 &
+        ;;
+
+    'stop')
+        killall -9 IARMDaemonMain
+        ;;
+
+    *)
+        echo "Usage: $0 { start | stop }"
+        exit 1
+        ;;
+esac
+exit 0
