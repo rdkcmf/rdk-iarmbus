@@ -53,5 +53,7 @@ AC_TYPE_SIZE_T
 
 
 AC_CONFIG_FILES([Makefile
-                 core/Makefile])
+                 core/Makefile
+                 template/Makefile
+                 test/Makefile])
 AC_OUTPUT
