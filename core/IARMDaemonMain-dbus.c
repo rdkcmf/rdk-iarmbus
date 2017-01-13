@@ -26,6 +26,10 @@
 #include <time.h>
 #include "string.h"
 
+#ifdef ENABLE_SD_NOTIFY
+#include <systemd/sd-daemon.h>
+#endif
+
 #ifdef RDK_LOGGER_ENABLED
 #include "rdk_debug.h"
 #include "iarmUtil.h"
@@ -92,6 +96,15 @@ int main(int argc,char *argv[])
 	setvbuf(stdout, NULL, _IOLBF, 0);
     LOG("server Entering %d\r\n", getpid());
     IARM_Bus_DaemonStart(0, NULL);
+    #ifdef ENABLE_SD_NOTIFY
+    LOG("servers Entering and notifying pid=%d\r\n", getpid());
+        sd_notifyf(0, "READY=1\n"
+          "STATUS=IARM Daemon is Successfully Initialized\n"
+          "MAINPID=%lu",
+          (unsigned long) getpid());
+    #else
+    LOG("servers Entering without notifying pid=%d\r\n", getpid());
+    #endif
     time_t curr = 0;
     while(1) {
         time(&curr);
