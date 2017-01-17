@@ -44,7 +44,7 @@ CFLAGS      += $(INCLUDE)
 
 ifeq ($(USE_DBUS),y)
 LDFLAGS += -L. -lpthread -ldbus-1
-CFLAGS += -D_USE_DBUS -DENABLE_SD_NOTIFY 
+CFLAGS += -D_USE_DBUS
 
 ifeq ($(RDK_PLATFORM_SOC),intel)
 CFLAGS += -I$(TOOLCHAIN_DIR)/usr/include/dbus-1.0 -I$(TOOLCHAIN_DIR)/lib/dbus-1.0/include
