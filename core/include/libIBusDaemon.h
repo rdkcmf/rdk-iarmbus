@@ -134,6 +134,20 @@ typedef enum _IARM_Bus_Daemon_PowerState_t {
 
 typedef IARM_Bus_PowerState_t IARM_Bus_PWRMgr_PowerState_t;
 
+typedef enum _IARM_Bus_Deamon_WakeupReason_t {
+    IARM_BUS_PWRMGR_WAKEUP_REASON_UNKNOWN, /*!< Wakeup reason unknown. */
+    IARM_BUS_PWRMGR_WAKEUP_REASON_REBOOT, /*!< Wakeup due to power on or reboot. */
+    IARM_BUS_PWRMGR_WAKEUP_REASON_TIMER, /*!< Wakeup due to scheduled hardware timer. */
+    IARM_BUS_PWRMGR_WAKEUP_REASON_RCU, /*!< Wakeup due to RCU key press event. */
+    IARM_BUS_PWRMGR_WAKEUP_REASON_FP, /*!< Wakeup due to Front Panel key press event. */
+    IARM_BUS_PWRMGR_WAKEUP_REASON_CEC, /*!< Wakeup due to CEC event. */
+    IARM_BUS_PWRMGR_WAKEUP_REASON_WOL, /*!< Wakeup due to Wake-On-(W)LAN event. */
+    IARM_BUS_PWRMGR_WAKEUP_REASON_TPS, /*!< Wakeup due to reboot caused by thermal protection sensor. */
+    IARM_BUS_PWRMGR_WAKEUP_REASON_WIFI_LOST /*!< Wakeup due to WiFI Access Point association loss. */
+} IARM_Bus_WakeupReason_t;
+
+typedef IARM_Bus_WakeupReason_t IARM_Bus_PWRMgr_WakeupReason_t;
+
 /*! Data associated with Power Pre-Change call*/
 typedef struct _IARM_Bus_CommonAPI_PowerPreChange_Param_t{
     IARM_Bus_PWRMgr_PowerState_t  newState;  /*!< New power state*/  
