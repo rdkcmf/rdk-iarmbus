@@ -73,7 +73,7 @@
 
 #include "libIBusDaemon.h"
 
-#ifdef _USE_DBUS
+#if 1
 #include <glib.h>
 #else
 #include <direct/list.h>
@@ -82,7 +82,7 @@
 /*! Published Names */
 typedef struct _IARM_Bus_Member_t
 {
-#ifdef _USE_DBUS
+#if 1
     GList           link;                            /*!< must be first member */
 #else
     DirectLink      link;                            /*!< must be first member */
@@ -93,7 +93,7 @@ typedef struct _IARM_Bus_Member_t
 } IARM_Bus_Member_t;
 
 #define IARM_BUS_DAEMON_API_RequestOwnership 		"RequestOwnership" /*!< Request Ownership of a resource*/
-#ifdef _USE_DBUS
+#if 1
 /*! Parameter for Request Ownership call*/
 typedef struct _IARM_Bus_Daemon_RequestOwnership_Param_t {
   IARM_Bus_Member_t             requestor;           /*!< IARM member who requested for the resource*/ 
