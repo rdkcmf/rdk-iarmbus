@@ -223,7 +223,7 @@ IARM_Result_t IARM_Call(const char *ownerName,  const char *funcName, void *arg,
  */
 IARM_Result_t IARM_IsCallRegistered(const char *ownerName, const char *callName, int *isRegistered);
 
-#ifdef _USE_DBUS
+#if 1
 /**
  * @brief Explicitly mark the return/finish of a RPC-Call 
  * 
