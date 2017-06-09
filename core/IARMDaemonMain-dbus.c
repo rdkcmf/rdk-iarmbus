@@ -21,6 +21,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <unistd.h>
 #include <time.h>
@@ -65,6 +67,30 @@ void logCallback(const char *buff)
 }
 #endif
 
+#define PID_BUF_SIZE 100
+#define PID_FILE_PATH "/var/run/iarmbusd/iarmbusd.pid"
+
+void writePIDFile() 
+{
+    char buf[PID_BUF_SIZE];
+
+    LOG("Writing PID file %s\n", PID_FILE_PATH);
+    int fd = open(PID_FILE_PATH, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+    if (fd == -1) 
+    {
+        LOG("ERROR opening PID file %s\n", PID_FILE_PATH);
+    } 
+    else 
+    {
+        snprintf(buf, PID_BUF_SIZE, "%ld\n", (long) getpid());
+        if (write(fd, buf, strlen(buf)) != strlen(buf)) 
+        {
+            LOG("ERROR writing to PID file %s\n", PID_FILE_PATH);
+        }
+        close(fd);
+    }
+}
+
 int main(int argc,char *argv[])
 {
     const char* debugConfigFile = NULL;
@@ -105,6 +131,10 @@ int main(int argc,char *argv[])
     #else
     LOG("servers Entering without notifying pid=%d\r\n", getpid());
     #endif
+
+    // write pidfile because sd_notify() does not work inside container
+    writePIDFile();
+
     time_t curr = 0;
     while(1) {
         time(&curr);
