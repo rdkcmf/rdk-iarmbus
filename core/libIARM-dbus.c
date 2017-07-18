@@ -516,6 +516,7 @@ IARM_Result_t IARM_Call(const char *ownerName,  const char *funcName, void *arg,
         {
             if (dbus_error_is_set(&error) == TRUE) {
                log("dbus_connection_send_with_reply_and_block failed with error %s \r\n", error.message);
+               dbus_error_free(&error);
             } else {
                 log("dbus_connection_send_with_reply_and_block failed \r\n");
             }
