@@ -411,6 +411,12 @@ static IARM_Result_t _ResolutionPostChange(void *arg)
         }
     }
 
+    IARM_Bus_EventData_t eventData;
+    eventData.resolution.width = reqIn->width;
+    eventData.resolution.height = reqIn->height;
+
+    IARM_Bus_BroadcastEvent(IARM_BUS_DAEMON_NAME, (IARM_EventId_t) IARM_BUS_EVENT_RESOLUTIONCHANGE, (void *)&eventData, sizeof(eventData));
+
     return retCode; //As there could be multiple member calls, success of each is not checked.
 }
 
