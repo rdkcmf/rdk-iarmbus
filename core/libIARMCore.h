@@ -210,6 +210,23 @@ IARM_Result_t IARM_RegisterCall(const char *ownerName, const char *callName, IAR
 IARM_Result_t IARM_Call(const char *ownerName,  const char *funcName, void *arg, int *ret);
 
 /**
+ * @brief Make a RPC call with Timeout
+ *
+ * Invoke the RPC function by specifying its names.  This call will block until
+ * the specified RPC function is published.
+ *
+ * @param [in] ownerName The name of member process implementing the RPC call.
+ * @param [in] funcName The name of the function to call.
+ * @param [in] arg Supply the argument to be used by the RPC call.
+ * @param [in] timeout millisecond time interval to be used for the RPC call.
+ * @param [out] ret Returns the return value of the RPC call.
+ *
+ * @return IARM_Result_t Error Code.
+ * @retval IARM_RESULT_SUCCESS on success
+ */
+IARM_Result_t IARM_CallWithTimeout(const char *ownerName,  const char *funcName, void *arg, int timeout, int *ret);
+
+/**
  * @brief Check whether a RPC call is registered or not.
  * 
  * RPC calls should be registered so that other processes can call. 

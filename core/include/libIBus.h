@@ -306,6 +306,25 @@ IARM_Result_t IARM_Bus_RegisterCall(const char *methodName, IARM_BusCall_t handl
 IARM_Result_t IARM_Bus_Call(const char *ownerName,  const char *methodName, void *arg, size_t argLen);
 
 /**
+ * @brief This API is used to Invoke RPC method by its application name and method
+ * name with specified timeout to wait for response.
+ *
+ * @param[in] ownerName well-known name of the application that publish the RPC call.
+ * @param[in] methodName well-known name of the RPC method.
+ * @param[in] arg It is the data structure holding input & output parameters of the invocation.
+ * @param[in] argLen The size of the data pointed by arg parameter.
+ * @param[in] timeout in millisecond for the RPC method.
+ *
+ * @return Error Code.
+ * @retval IARM_RESULT_SUCCESS Indicates the call was successful.
+ * @retval IARM_RESULT_INVALID_PARAM Indicates invalid input parameter.
+ * @retval IARM_RESULT_INVALID_STATE Indicates the IARM_Bus was either not initialised nor connected.
+ * @retval IARM_RESULT_IPCCORE_FAIL Indicates failure of the underlying IPC.
+ * @retval IARM_RESULT_OOM Indicates failure to allocate memory.
+ */
+IARM_Result_t IARM_Bus_Call_with_IPCTimeout(const char *ownerName,  const char *methodName, void *arg, size_t argLen, int timeout);
+
+/**
  * @brief This API is used to register all the events that are published by the application.
  *
  * An application can publish multiple events and these events must have an enumeration value

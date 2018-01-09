@@ -434,6 +434,27 @@ IARM_Result_t IARM_RegisterCall(const char *ownerName, const char *callName, IAR
  */
 IARM_Result_t IARM_Call(const char *ownerName,  const char *funcName, void *arg, int *ret)
 {
+    return IARM_CallWithTimeout(ownerName, funcName, arg, IARM_METHOD_IPC_TIMEOUT_DEFAULT, ret);
+}
+
+
+/**
+ * @brief Make a RPC call with timeout
+ *
+ * Invoke the RPC function by specifying its names.  This call will block until
+ * the specified RPC function is published.
+ *
+ * @param [in] grpCtx Context of the process group.
+ * @param [in] ownerName The name of member process implementing the RPC call.
+ * @param [in] callName The name of the function to call.
+ * @param [in] arg Supply the argument to be used by the RPC call.
+ * @param [in] timeout millisecond time interval to be used for the RPC call.
+ * @param [out] ret Returns the return value of the RPC call.
+ *
+ * @return IARM_Result_t Error Code.
+ */
+IARM_Result_t IARM_CallWithTimeout(const char *ownerName,  const char *funcName, void *arg, int timeout, int *ret)
+{
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
     IARM_Ctx_t *grpCtx = m_grpCtx;
     IARM_Ctx_t * cctx = (IARM_Ctx_t *)grpCtx;
@@ -464,10 +485,10 @@ IARM_Result_t IARM_Call(const char *ownerName,  const char *funcName, void *arg,
                                            "/iarm/method/Object", // object to call on
                                            "iarm.method.Type", // interface to call on
                                            funcName); // method name
-                                           
-        if (NULL == msg) 
-        { 
-            log("%s Error dbus_message_new_method_call failed\n", __FUNCTION__); 
+
+        if (NULL == msg)
+        {
+            log("%s Error dbus_message_new_method_call failed\n", __FUNCTION__);
             return IARM_RESULT_INVALID_PARAM;
         }
 
@@ -477,41 +498,45 @@ IARM_Result_t IARM_Call(const char *ownerName,  const char *funcName, void *arg,
         size = (size_t)IARM_GetSize(arg);
         size += 12; /* include prefix */
         byteIndex -= 12;
-        
+
         if (!dbus_message_iter_append_basic(&arglist, DBUS_TYPE_UINT32 , &size))
         {
-            log("%s Error dbus_message_iter_append_basic failed\n", __FUNCTION__); 
+            log("%s Error dbus_message_iter_append_basic failed\n", __FUNCTION__);
             dbus_message_unref(msg);
             return IARM_RESULT_INVALID_PARAM;
         }
 
         if (!dbus_message_iter_open_container(&arglist, DBUS_TYPE_ARRAY, "y", &arraylist))
         {
-            log("%s Error dbus_message_iter_open_container failed\n", __FUNCTION__); 
+            log("%s Error dbus_message_iter_open_container failed\n", __FUNCTION__);
             dbus_message_unref(msg);
             return IARM_RESULT_INVALID_PARAM;
         }
 
         if (!dbus_message_iter_append_fixed_array (&arraylist, DBUS_TYPE_BYTE, (void *)&byteIndex, size))
         {
-            log("%s Error dbus_message_iter_append_fixed_array failed\n", __FUNCTION__); 
+            log("%s Error dbus_message_iter_append_fixed_array failed\n", __FUNCTION__);
             dbus_message_unref(msg);
             return IARM_RESULT_INVALID_PARAM;
         }
 
         if (!dbus_message_iter_close_container(&arglist, &arraylist))
         {
-            log("%s Error dbus_message_iter_close_container failed\n", __FUNCTION__); 
+            log("%s Error dbus_message_iter_close_container failed\n", __FUNCTION__);
             dbus_message_unref(msg);
             return IARM_RESULT_INVALID_PARAM;
         }
 
+        /* Block and timeout after 5 sec as default */
+        if (timeout <= IARM_METHOD_IPC_TIMEOUT_DEFAULT)
+            timeout = 5000; /* 5 sec*/
+        else if (timeout == IARM_METHOD_IPC_TIMEOUT_INFINITE)
+            timeout = DBUS_TIMEOUT_INFINITE;
 
         //log("%s called %s %s sender %s\n", __FUNCTION__, ownerName, funcName, dbus_message_get_sender(msg));
 
          dbus_error_init(&error);
-        /* Block and timeout after 5 sec */
-        replyMsg = dbus_connection_send_with_reply_and_block(cctx->connMethodCall,msg, 5000, &error);
+        replyMsg = dbus_connection_send_with_reply_and_block(cctx->connMethodCall,msg, timeout, &error);
         if (!replyMsg) 
         {
             if (dbus_error_is_set(&error) == TRUE) {
@@ -524,7 +549,7 @@ IARM_Result_t IARM_Call(const char *ownerName,  const char *funcName, void *arg,
             dbus_message_unref(msg);
             return IARM_RESULT_INVALID_STATE;
         }
-  
+
         // free message
         dbus_message_unref(msg);
 

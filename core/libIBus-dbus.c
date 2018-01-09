@@ -586,6 +586,49 @@ IARM_Result_t IARM_Bus_RegisterCall(const char *methodName, IARM_BusCall_t handl
 }
 
 
+IARM_Result_t IARM_Bus_Call_with_IPCTimeout(const char *ownerName,  const char *methodName, void *arg, size_t argLen, int timeout)
+{
+    IARM_Result_t retCode = IARM_RESULT_SUCCESS;
+
+	IARM_ASSERT(m_initialized && m_connected);
+
+    IBUS_Lock(lock);
+
+    if (m_initialized && m_connected) {
+        void *argOut = NULL;
+        
+        //log("Final call to %s-%s\r\n", ownerName, methodName);
+
+        /* even if there is no arg we still need to send 12 byte header allocated by IARM_Malloc, in this case use 1 byte dummy arg */
+        retCode = IARM_Malloc(IARM_MEMTYPE_PROCESSLOCAL, (arg != NULL) ? argLen : 1, (void **)&argOut);
+        
+        if (retCode == IARM_RESULT_SUCCESS) {
+            if(arg != NULL)
+            {
+                memcpy(argOut, arg, argLen);
+            }
+            IARM_Result_t retVal = IARM_RESULT_SUCCESS;
+            retCode = IARM_CallWithTimeout(ownerName, methodName, argOut, timeout, (int *)&retVal);
+            if ((retCode == IARM_RESULT_SUCCESS) && (argOut != NULL))
+            {
+                memcpy(arg,argOut,argLen);
+            }
+            IARM_Free(IARM_MEMTYPE_PROCESSLOCAL, argOut);
+            if(retCode == IARM_RESULT_SUCCESS)
+            {
+                retCode = retVal;
+            }
+        }
+    }
+    else {
+        retCode = IARM_RESULT_INVALID_STATE;
+    }
+    IBUS_Unlock(lock);
+
+    return retCode;
+}
+
+
 IARM_Result_t IARM_Bus_Call(const char *ownerName,  const char *methodName, void *arg, size_t argLen)
 {
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
