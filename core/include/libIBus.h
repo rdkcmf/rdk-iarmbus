@@ -339,6 +339,16 @@ IARM_Result_t IARM_Bus_Call_with_IPCTimeout(const char *ownerName,  const char *
  */
 IARM_Result_t IARM_Bus_RegisterEvent(IARM_EventId_t maxEventId);
 
+/**
+ * @brief Write PID file
+ *
+ * This API allows Daemon to write PID file
+ *
+ * @param full pathname to pidfile to write
+ */
+void IARM_Bus_WritePIDFile(const char *path);
+
+
 /* End of IARM_BUS_IARM_CORE_API doxygen group */
 /**
  * @}

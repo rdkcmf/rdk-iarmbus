@@ -105,6 +105,14 @@ int main(int argc,char *argv[])
     #else
     LOG("servers Entering without notifying pid=%d\r\n", getpid());
     #endif
+
+#ifdef PID_FILE_PATH
+#define xstr(s) str(s)
+#define str(s) #s
+    // write pidfile because sd_notify() does not work inside container
+    IARM_Bus_WritePIDFile(xstr(PID_FILE_PATH) "/iarmbusd.pid");
+#endif
+
     time_t curr = 0;
     while(1) {
         time(&curr);
