@@ -95,9 +95,7 @@ typedef struct _IARM_EventData_t {
 	char owner[IARM_MAX_NAME_LEN];   /*!< Owner of the event*/
 	IARM_EventId_t id;               /*!< Event id*/
 	size_t len;                      /*!< Size of event data*/
-	union {
-		int dummy;
-	} data;                          /*!< Event data*/
+	char data[];                     /*!< Event data*/
 } IARM_EventData_t;
 
 typedef enum _IARM_MemType_t 
