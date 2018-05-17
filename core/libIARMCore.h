@@ -109,7 +109,7 @@ typedef enum _IARM_MemType_t
  * @brief Callback prototype for IARM RPC Call.
  * 
  */
-typedef void (*IARM_Call_t) (void *ctx, unsigned long methodID, void *arg, unsigned int magic);
+typedef void (*IARM_Call_t) (void *ctx, unsigned long methodID, void *arg, void *magic);
 
 /**
  * @brief Callback prototype for IARM listener interface.
@@ -251,12 +251,12 @@ IARM_Result_t IARM_IsCallRegistered(const char *ownerName, const char *callName,
  * @param [in] ownerName The name of owner process implementing the RPC call.
  * @param [in] funcName The name of the function to call. 
  * @param [in] ret return value of the executed RPC-Call.
- * @param [in] serial a number that must match the "serial" passed in when the RPC implementation is executed. 
+ * @param [in] callMsg must match the "serial" passed in when the RPC implementation is executed.
  *
  * @return IARM_Result_t Error Code.
  * @retval IARM_RESULT_SUCCESS on success
  */
-IARM_Result_t IARM_CallReturn(const char *ownerName, const char *funcName, void *arg, int ret, unsigned int callMsg);
+IARM_Result_t IARM_CallReturn(const char *ownerName, const char *funcName, void *arg, int ret, void *callMsg);
 
 #else
 /**

@@ -328,7 +328,7 @@ DBusHandlerResult dbusCallHandler(DBusConnection *connection, DBusMessage *msg, 
         dbus_message_iter_recurse(&arglist, &arraylist);
         dbus_message_iter_get_fixed_array(&arraylist, (void *)&callArg, &size);
         callArg += 12;
-        callInfo->handler(callInfo->callCtx, 0, (void *)callArg, (unsigned int) msg);
+        callInfo->handler(callInfo->callCtx, 0, (void *)callArg, (void *)msg);
         return DBUS_HANDLER_RESULT_HANDLED;   
         }
     else if (!dbus_message_has_interface(msg, "iarm.method.Type"))
@@ -611,11 +611,11 @@ IARM_Result_t IARM_CallWithTimeout(const char *ownerName,  const char *funcName,
  * @param [in] ownerName The name of owner process implementing the RPC call.
  * @param [in] callName The name of the function to call. 
  * @param [in] ret return value of the executed RPC-Call.
- * @param [in] serial a number that must match the "serial" passed in when the RPC implementation is executed. 
+ * @param [in] callMsg must match the "serial" passed in when the RPC implementation is executed.
  *
  * @return IARM_Result_t Error Code.
  */
-IARM_Result_t IARM_CallReturn(const char *ownerName, const char *funcName, void *arg, int ret, unsigned int callMsg)
+IARM_Result_t IARM_CallReturn(const char *ownerName, const char *funcName, void *arg, int ret, void *callMsg)
 {
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
     IARM_Ctx_t *grpCtx = m_grpCtx;

@@ -68,7 +68,7 @@ static IARM_Result_t Register(void);
 static IARM_Result_t UnRegister(void);
 static IARM_Result_t RegisterPreChange(IARM_Bus_CallContext_t *callCtx);
 
-static void _BusCall_FuncWrapper(void *callCtx, unsigned long methodID, void *arg, unsigned int serial);
+static void _BusCall_FuncWrapper(void *callCtx, unsigned long methodID, void *arg, void *serial);
 static void _EventHandler_FuncWrapper (void *ctx, void *arg);
 
 #define MAX_LOG_BUFF 200
@@ -1022,7 +1022,7 @@ static IARM_Result_t RegisterPreChange(IARM_Bus_CallContext_t *callCtx)
 }
 
 
-static void _BusCall_FuncWrapper(void *callCtx, unsigned long methodID, void *arg, unsigned int serial)
+static void _BusCall_FuncWrapper(void *callCtx, unsigned long methodID, void *arg, void *serial)
 {
 	//log("Entering [%s] - callCtx[%p]\r\n", __FUNCTION__, callCtx);
 
