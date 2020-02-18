@@ -140,6 +140,13 @@ typedef struct _IARM_Bus_CommonAPI_PowerPreChange_Param_t{
     IARM_Bus_PWRMgr_PowerState_t  curState;  /*!< Current power state*/
 } IARM_Bus_CommonAPI_PowerPreChange_Param_t;
 
+
+typedef struct _IARM_Bus_PowerPreChange_Param_t{
+    IARM_Bus_PWRMgr_PowerState_t  newState;  /*!< New power state*/
+    IARM_Bus_PWRMgr_PowerState_t  curState;  /*!< Current power state*/
+    char owner[IARM_MAX_NAME_LEN];
+} IARM_Bus_PowerPreChange_Param_t;
+
 /*! Data associated with Release ownership call*/
 typedef struct _IARM_Bus_CommonAPI_ReleaseOwnership_Param_t {
     IARM_Bus_ResrcType_t resrcType;        /*!< Type of resource to be freed*/     
