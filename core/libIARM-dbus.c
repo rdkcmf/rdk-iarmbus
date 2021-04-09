@@ -857,7 +857,7 @@ IARM_Result_t IARM_NotifyEvent(const char *ownerName,  IARM_EventId_t eventId, v
  */
 IARM_Result_t IARM_RegisterListner(const char *ownerName, IARM_EventId_t eventId, IARM_Listener_t listener, void *callCtx)
 {
-    IARM_Result_t retCode = IARM_RESULT_INVALID_PARAM;
+    IARM_Result_t retCode = IARM_RESULT_SUCCESS;
     IARM_Ctx_t *grpCtx = m_grpCtx;
     IARM_Ctx_t * cctx = (IARM_Ctx_t *)grpCtx;
     IARM_UIEvent_t *eventInfo;

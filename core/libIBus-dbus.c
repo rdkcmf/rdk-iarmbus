@@ -109,17 +109,23 @@ IARM_Result_t IARM_Bus_Init(const char *name)
 	if (!m_initialized && !m_connected) {
 
 		void *gctx = NULL;
-		IARM_Init(IARM_BUS_NAME, name);
-		IARM_Malloc(IARM_MEMTYPE_PROCESSLOCAL, sizeof(IARM_Bus_Member_t), (void **) &m_member);
-		sprintf(m_member->selfName, "%s", name);
-		m_member->pid = getpid();
-		m_member->gctx = gctx;
+        retCode = IARM_Init(IARM_BUS_NAME, name);
+        if (IARM_RESULT_SUCCESS == retCode) {
+            IARM_Malloc(IARM_MEMTYPE_PROCESSLOCAL, sizeof(IARM_Bus_Member_t), (void **) &m_member);
+            sprintf(m_member->selfName, "%s", name);
+            m_member->pid = getpid();
+            m_member->gctx = gctx;
 
-		log("setting init done\r\n");
-		m_initialized = 1;
+            log("setting init done\r\n");
+            m_initialized = 1;
+        }
+        else {
+            log("%s init failed\r\n", __FUNCTION__);
+        }
 	}
 	else {
-    	retCode = IARM_RESULT_INVALID_PARAM;
+    	retCode = IARM_RESULT_INVALID_STATE;
+		log("%s [%s] Component Already registered with IARM; Invalid state\n", __FUNCTION__, name);
 	}
 
 	IBUS_Unlock(lock);
@@ -167,7 +173,10 @@ IARM_Result_t IARM_Bus_Term(void)
         IARM_Free(IARM_MEMTYPE_PROCESSLOCAL, m_member);
         m_member = NULL;
 		m_initialized = 0;
-		IARM_Term();
+		retCode = IARM_Term();
+        if (retCode != IARM_RESULT_SUCCESS) {
+            log("%s Term Failed\n", __FUNCTION__);
+        }
     }
     else {
     	log("NOT INITD\r\n");
@@ -203,6 +212,7 @@ IARM_Result_t IARM_Bus_Connect(void)
     }
     else {
         retCode = IARM_RESULT_INVALID_STATE;
+		log("%s invalid state\n", __FUNCTION__);
     }
     IBUS_Unlock(lock);
 
@@ -235,6 +245,7 @@ IARM_Result_t IARM_Bus_Disconnect(void)
     }
     else {
         retCode = IARM_RESULT_INVALID_STATE;
+		log("%s invalid state\n", __FUNCTION__);
     }
     IBUS_Unlock(lock);
     return retCode;
@@ -264,12 +275,15 @@ IARM_Result_t IARM_Bus_BroadcastEvent(const char *ownerName, IARM_EventId_t even
     IBUS_Lock(lock);
     if (!m_initialized || !m_connected) {
         retCode = IARM_RESULT_INVALID_STATE;
+		log("%s invalid state\n", __FUNCTION__);
     }
 	else if (strlen(ownerName) > IARM_MAX_NAME_LEN) {
         retCode = IARM_RESULT_INVALID_PARAM;
+		log("%s invalid component name\n", __FUNCTION__);
 	}
     else if (data == NULL) {
         retCode = IARM_RESULT_INVALID_PARAM;
+		log("%s invalid input data\n", __FUNCTION__);
     }
 	else {
         IARM_EventData_t *eventData = NULL;
@@ -279,7 +293,10 @@ IARM_Result_t IARM_Bus_BroadcastEvent(const char *ownerName, IARM_EventId_t even
 		eventData->len = len;
 		memcpy(&eventData->data, data, len);
 		//log("[%s\r\n", __FUNCTION__);
-        IARM_NotifyEvent(ownerName, (IARM_EventId_t)eventId, (void *)eventData);
+        retCode = IARM_NotifyEvent(ownerName, (IARM_EventId_t)eventId, (void *)eventData);
+        if (retCode != IARM_RESULT_SUCCESS) {
+            log("%s failed to send notification\n", __FUNCTION__);
+        }
         IARM_Free(IARM_MEMTYPE_PROCESSLOCAL, eventData);
     }
     IBUS_Unlock(lock);
@@ -356,7 +373,10 @@ IARM_Result_t IARM_Bus_RegisterEventHandler(const char *ownerName, IARM_EventId_
                 if( NULL ==  g_list_find_custom(m_eventHandlerList,cctx,_Is_Context_Matching) )
                 {
                     m_eventHandlerList = g_list_prepend(m_eventHandlerList, cctx);
-                    IARM_RegisterListner(ownerName, (IARM_EventId_t) eventId, _EventHandler_FuncWrapper, NULL);
+                    retCode = IARM_RegisterListner(ownerName, (IARM_EventId_t) eventId, _EventHandler_FuncWrapper, NULL);
+                    if (retCode != IARM_RESULT_SUCCESS) {
+                        log("%s failed add listener for [%s][%d] with IARM Core Handler \r\n", __FUNCTION__, ownerName, eventId);
+                    }
                     //log("Added event  [%s][%d] with IARM Core Handler \r\n", ownerName, eventId);
                 }
                 else
@@ -368,6 +388,7 @@ IARM_Result_t IARM_Bus_RegisterEventHandler(const char *ownerName, IARM_EventId_
     }
     else {
         retCode = IARM_RESULT_INVALID_STATE;
+		log("%s failed for eventID:%d of %s as this process is in invalid state isInitialized:%d isConnected:%d \n", __FUNCTION__, eventId, ownerName, m_initialized, m_connected);
     }
     IBUS_Unlock(lock);
 
@@ -385,7 +406,7 @@ IARM_Result_t IARM_Bus_RegisterEventHandler(const char *ownerName, IARM_EventId_
  */
 IARM_Result_t IARM_Bus_UnRegisterEventHandler(const char *ownerName, IARM_EventId_t eventId)
 {
-    IARM_Result_t retCode = IARM_RESULT_IPCCORE_FAIL;
+    IARM_Result_t retCode = IARM_RESULT_SUCCESS;
 
     IARM_ASSERT(m_initialized && m_connected);
 
@@ -402,18 +423,20 @@ IARM_Result_t IARM_Bus_UnRegisterEventHandler(const char *ownerName, IARM_EventI
 				event_list = g_list_next(event_list);
                 m_eventHandlerList = g_list_remove(m_eventHandlerList, (void *)cctx);
 			    IARM_Free(IARM_MEMTYPE_PROCESSLOCAL, (void *)cctx);
-	       		IARM_UnRegisterListner(ownerName, (IARM_EventId_t)eventId);		
-                retCode = IARM_RESULT_SUCCESS;
+	       		retCode = IARM_UnRegisterListner(ownerName, (IARM_EventId_t)eventId);
+                if (retCode != IARM_RESULT_SUCCESS) {
+                    log("%s failed remove listener for [%s][%d] with IARM Core Handler \r\n", __FUNCTION__, ownerName, eventId);
+                }
 			}
 			else
 			{
 				event_list = g_list_next(event_list);
     		}	
 		}
-
     }
     else {
         retCode = IARM_RESULT_INVALID_STATE;
+		log("%s failed for eventID:%d of %s as this process is in invalid state isInitialized:%d isConnected:%d \n", __FUNCTION__, eventId, ownerName, m_initialized, m_connected);
     }
 
     IBUS_Unlock(lock);
@@ -463,23 +486,25 @@ IARM_Result_t IARM_Bus_RemoveEventHandler(const char *ownerName, IARM_EventId_t 
                 /* Now search that if we have still same event registered with diff handler */
                 if( NULL == g_list_find_custom(m_eventHandlerList,cctx,_Is_Context_Matching) )
                 {
-                    IARM_UnRegisterListner(ownerName, (IARM_EventId_t)eventId);         
-                    log("Remove event  [%s][%d] with IARM Core \r\n", ownerName, eventId);
+                    retCode = IARM_UnRegisterListner(ownerName, (IARM_EventId_t)eventId);
+                    if (retCode != IARM_RESULT_SUCCESS)
+                        log("%s Failed Remove event  [%s][%d] with IARM Core \r\n", __FUNCTION__, ownerName, eventId);
+                    else
+                        log("%s Removed event  [%s][%d] with IARM Core \r\n", __FUNCTION__, ownerName, eventId);
                 }
                 IARM_Free(IARM_MEMTYPE_PROCESSLOCAL, (void *)cctx);
-                retCode = IARM_RESULT_SUCCESS;
                 break;
             }
             else
             {
                 event_list = g_list_next(event_list);
-                
             }   
         }
 
     }
     else {
         retCode = IARM_RESULT_INVALID_STATE;
+		log("%s failed for eventID:%d of %s as this process is in invalid state isInitialized:%d isConnected:%d \n", __FUNCTION__, eventId, ownerName, m_initialized, m_connected);
     }
 
     IBUS_Unlock(lock);
@@ -500,8 +525,6 @@ IARM_Result_t IARM_Bus_IsConnected(const char *memberName, int *isRegistered)
 {
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
 
-	IARM_ASSERT(m_initialized && m_connected);
-
     IBUS_Lock(lock);
     if (m_initialized && m_connected) {
 
@@ -515,12 +538,12 @@ IARM_Result_t IARM_Bus_IsConnected(const char *memberName, int *isRegistered)
 
         if(req.isRegistered == 0) //on failure case, we need to return failure.
         {
+		    log("%s failed to communicate with daemon\n", __FUNCTION__);
             retCode = IARM_RESULT_IPCCORE_FAIL;
         }
-
     }
     else {
-
+		log("%s invalid state\n", __FUNCTION__);
         retCode = IARM_RESULT_INVALID_STATE;
     }
 
@@ -558,6 +581,8 @@ IARM_Result_t IARM_Bus_RegisterCall(const char *methodName, IARM_BusCall_t handl
 
     if ( methodName == NULL || (strlen(methodName) >= IARM_MAX_NAME_LEN)) {
     	retCode = IARM_RESULT_INVALID_PARAM;
+		log("%s invalid input passed\n", __FUNCTION__);
+        return retCode;
     }
 
     IBUS_Lock(lock);
@@ -572,16 +597,19 @@ IARM_Result_t IARM_Bus_RegisterCall(const char *methodName, IARM_BusCall_t handl
 		strncpy(cctx->ownerName, m_member->selfName, IARM_MAX_NAME_LEN);
 		strncpy(cctx->methodName, methodName, IARM_MAX_NAME_LEN);
 		cctx->handler = handler;
-        IARM_RegisterCall(m_member->selfName, methodName, _BusCall_FuncWrapper, (void *)cctx/*callCtx*/);
+        retCode = IARM_RegisterCall(m_member->selfName, methodName, _BusCall_FuncWrapper, (void *)cctx/*callCtx*/);
         {
            //log("Adding registered call context [%p] to list [%p]\r\n", cctx, m_registeredCallList);
             m_registeredCallList = g_list_prepend(m_registeredCallList, cctx);
         }
+        if (IARM_RESULT_SUCCESS != retCode)
+           log("%s failed register call [%s]\n", __FUNCTION__, methodName);
         
         RegisterPreChange(cctx);           
     }
     else {
         retCode = IARM_RESULT_INVALID_STATE;
+		log("%s invalid state\n", __FUNCTION__);
     }
     IBUS_Unlock(lock);
     return retCode;
@@ -620,10 +648,15 @@ IARM_Result_t IARM_Bus_Call_with_IPCTimeout(const char *ownerName,  const char *
             {
                 retCode = retVal;
             }
+            if(retCode != IARM_RESULT_SUCCESS)
+		        log("%s failed to complete the method invocation %s with retCode %d \n", __FUNCTION__, methodName, retCode);
         }
+        else
+		    log("%s failed to allocated memory for the method invocation %s with retCode %d \n", __FUNCTION__, methodName, retCode);
     }
     else {
         retCode = IARM_RESULT_INVALID_STATE;
+		log("%s invalid state\n", __FUNCTION__);
     }
     IBUS_Unlock(lock);
 
@@ -663,10 +696,18 @@ IARM_Result_t IARM_Bus_Call(const char *ownerName,  const char *methodName, void
             {
                 retCode = retVal;
             }
+            else
+                log("%s failed to invoke %s with retCode %d \n", __FUNCTION__, methodName, retCode);
+
+            if(retCode != IARM_RESULT_SUCCESS)
+                log("%s provider returned error (%d) for the method %s \n", __FUNCTION__, retCode, methodName);
         }
+        else
+            log("%s failed to allocated memory for the method invocation %s with retCode %d \n", __FUNCTION__, methodName, retCode);
     }
     else {
         retCode = IARM_RESULT_INVALID_STATE;
+		log("%s failed to call %s as this process is in invalid state isInitialized:%d isConnected:%d \n", __FUNCTION__, methodName, m_initialized, m_connected);
     }
     IBUS_Unlock(lock);
 
@@ -683,10 +724,13 @@ IARM_Result_t IARM_Bus_RegisterEvent(int maxEventId)
 
     IBUS_Lock(lock);
     if (m_initialized && m_connected) {
-        IARM_RegisterEvent(m_member->selfName, maxEventId);
+        retCode = IARM_RegisterEvent(m_member->selfName, maxEventId);
+        if(retCode != IARM_RESULT_SUCCESS)
+            log("%s failed to register event %d with retCode %d \n", __FUNCTION__, maxEventId, retCode);
     }
     else {
         retCode = IARM_RESULT_INVALID_STATE;
+		log("%s invalid state\n", __FUNCTION__);
     }
     IBUS_Unlock(lock);
     return retCode;
@@ -726,7 +770,7 @@ IARM_Result_t IARM_BusDaemon_RequestOwnership(IARM_Bus_ResrcType_t resrcType)
         	retCode = IARM_RESULT_SUCCESS;
     	}
     	else {
-    //		log("Requestor [%s] does NOT has ReleaseOwnership\r\n", m_member->selfName);
+    		log("Requestor [%s] does NOT has ReleaseOwnership\r\n", m_member->selfName);
         	retCode = IARM_RESULT_INVALID_STATE;
     	}
 
@@ -743,9 +787,12 @@ IARM_Result_t IARM_BusDaemon_RequestOwnership(IARM_Bus_ResrcType_t resrcType)
         {
             retCode = req.rpcResult;
         }
+        if(retCode != IARM_RESULT_SUCCESS)
+            log("%s failed to request ownership with retCode %d \n", __FUNCTION__, retCode);
     }
     else {
         retCode = IARM_RESULT_INVALID_STATE;
+		log("%s invalid state\n", __FUNCTION__);
     }
     IBUS_Unlock(lock);
    // log("Exiting IARM_BusDaemon_RequestOwnership\r\n");
@@ -769,13 +816,14 @@ IARM_Result_t IARM_BusDaemon_ReleaseOwnership(IARM_Bus_ResrcType_t resrcType)
 
     IARM_ASSERT(m_initialized && m_connected);
 
-    IBUS_Lock(lock);
 
     if( (resrcType < 0) || (resrcType >= IARM_BUS_RESOURCE_MAX))
     {
-        IBUS_Unlock(lock);
+		log("%s invalid input\n", __FUNCTION__);
         return IARM_RESULT_INVALID_PARAM;
     }
+
+    IBUS_Lock(lock);
 
     if (m_initialized && m_connected) {
     	IARM_Bus_Daemon_ReleaseOwnership_Param_t req;
@@ -787,9 +835,12 @@ IARM_Result_t IARM_BusDaemon_ReleaseOwnership(IARM_Bus_ResrcType_t resrcType)
         {
             retCode = req.rpcResult;
         }
+        if(retCode != IARM_RESULT_SUCCESS)
+            log("%s failed to request ownership with retCode %d \n", __FUNCTION__, retCode);
     }
     else {
         retCode = IARM_RESULT_INVALID_STATE;
+		log("%s invalid state\n", __FUNCTION__);
     }
     IBUS_Unlock(lock);
    /* log("Exiting IARM_BusDaemon_ReleaseOwnership\r\n");*/
@@ -825,9 +876,13 @@ IARM_Result_t IARM_BusDaemon_PowerPrechange(IARM_Bus_CommonAPI_PowerPreChange_Pa
 
 	retCode = IARM_Bus_Call(IARM_BUS_DAEMON_NAME, IARM_BUS_DAEMON_API_PowerPreChange, &param, sizeof(param));
 
+    if(retCode != IARM_RESULT_SUCCESS)
+        log("%s failed to invoke PowerPreChange method with retCode %d \n", __FUNCTION__, retCode);
+
     }
     else {
         retCode = IARM_RESULT_INVALID_STATE;
+		log("%s invalid state\n", __FUNCTION__);
     }
     IBUS_Unlock(lock);
     //log("Exiting IARM_BusDaemon_PowerPrechange\r\n");
@@ -864,9 +919,12 @@ IARM_Result_t IARM_BusDaemon_DeepSleepWakeup(IARM_Bus_CommonAPI_PowerPreChange_P
 
     retCode = IARM_Bus_Call(IARM_BUS_DAEMON_NAME, IARM_BUS_DAEMON_API_DeepSleepWakeup, &param, sizeof(param));
 
+    if(retCode != IARM_RESULT_SUCCESS)
+        log("%s failed to invoke DeepSleepWakeup method with retCode %d \n", __FUNCTION__, retCode);
     }
     else {
         retCode = IARM_RESULT_INVALID_STATE;
+		log("%s invalid state\n", __FUNCTION__);
     }
     IBUS_Unlock(lock);
     /*log("Exiting IARM_BusDaemon_DeepSleepWakeup\r\n");*/
@@ -899,9 +957,13 @@ IARM_Result_t IARM_BusDaemon_ResolutionPrechange(IARM_Bus_CommonAPI_ResChange_Pa
         param.width = preChangeParam.width;
         param.height = preChangeParam.height;
         retCode = IARM_Bus_Call(IARM_BUS_DAEMON_NAME, IARM_BUS_DAEMON_API_ResolutionPreChange, &param, sizeof(param));
+
+        if(retCode != IARM_RESULT_SUCCESS)
+            log("%s failed to invoke ResolutionPreChange method with retCode %d \n", __FUNCTION__, retCode);
     }
     else {
         retCode = IARM_RESULT_INVALID_STATE;
+		log("%s invalid state\n", __FUNCTION__);
     }
     IBUS_Unlock(lock);
    /* log("Exiting IARM_BusDaemon_ResolutionPrechange\r\n");*/
@@ -935,9 +997,12 @@ IARM_Result_t IARM_BusDaemon_ResolutionPostchange(IARM_Bus_CommonAPI_ResChange_P
         param.width = postChangeParam.width;
         param.height = postChangeParam.height;
         retCode = IARM_Bus_Call(IARM_BUS_DAEMON_NAME, IARM_BUS_DAEMON_API_ResolutionPostChange, &param, sizeof(param));
+        if(retCode != IARM_RESULT_SUCCESS)
+            log("%s failed to invoke ResolutionPostChange method with retCode %d \n", __FUNCTION__, retCode);
     }
     else {
         retCode = IARM_RESULT_INVALID_STATE;
+		log("%s invalid state\n", __FUNCTION__);
     }
     IBUS_Unlock(lock);
    /* log("Exiting IARM_BusDaemon_ResolutionPostchange\r\n");*/
@@ -957,9 +1022,12 @@ IARM_Result_t IARM_BusDaemon_ResolutionPostchange(IARM_Bus_CommonAPI_ResChange_P
 static IARM_Result_t Register(void)
 {
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
+    IARM_Result_t rc = IARM_RESULT_SUCCESS;
     if (strcmp(m_member->selfName, IARM_BUS_DAEMON_NAME) != 0) {
         log("Registering %s\r\n", m_member->selfName);
-    	IARM_Call(IARM_BUS_DAEMON_NAME, IARM_BUS_DAEMON_API_RegisterMember, (void *)m_member, (int *)&retCode);
+    	rc = IARM_Call(IARM_BUS_DAEMON_NAME, IARM_BUS_DAEMON_API_RegisterMember, (void *)m_member, (int *)&retCode);
+        if((rc != IARM_RESULT_SUCCESS) || (retCode != IARM_RESULT_SUCCESS))
+            log("%s failed to invoke RegisterMember method\n", __FUNCTION__);
     }
     else {
         log("NOT Registering %s\r\n", m_member->selfName);
@@ -979,8 +1047,11 @@ static IARM_Result_t Register(void)
 static IARM_Result_t UnRegister(void)
 {
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
+    IARM_Result_t rc = IARM_RESULT_SUCCESS;
     if (strcmp(m_member->selfName, IARM_BUS_DAEMON_NAME) != 0) {
     	IARM_Call(IARM_BUS_DAEMON_NAME, IARM_BUS_DAEMON_API_UnRegisterMember, (void *)m_member, (int *)&retCode);
+        if((rc != IARM_RESULT_SUCCESS) || (retCode != IARM_RESULT_SUCCESS))
+            log("%s failed to invoke UnRegisterMember method\n", __FUNCTION__);
     }
     return IARM_RESULT_SUCCESS;
 }
@@ -1012,6 +1083,8 @@ static IARM_Result_t RegisterPreChange(IARM_Bus_CallContext_t *callCtx)
             strncpy(callParam.ownerName,callCtx->ownerName, IARM_MAX_NAME_LEN);
             strncpy(callParam.methodName,callCtx->methodName, IARM_MAX_NAME_LEN);
             retCode = IARM_Bus_Call(IARM_BUS_DAEMON_NAME,IARM_BUS_DAEMON_API_RegisterPreChange, &callParam, sizeof(callParam));
+            if(retCode != IARM_RESULT_SUCCESS)
+                log("%s failed to invoke RegisterPreChange method with retCode %d \n", __FUNCTION__, retCode);
         }
         else {
             //log("Not Registering Prechange %s -%s\r\n", callCtx->ownerName,callCtx->methodName);

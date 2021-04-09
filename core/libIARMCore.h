@@ -86,7 +86,7 @@ extern "C"
 #include <stdbool.h>
 #define IARM_ASSERT(cond) while(!(cond)) \
 { \
-    printf("IARM_ASSERT Failed at [%s]-[%d]\r\n", __func__, __LINE__);\
+    printf("IARM_ASSERT Failed at [%s @ %d]\r\n", __func__, __LINE__);\
     break; \
 }\
 
