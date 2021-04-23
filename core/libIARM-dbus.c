@@ -27,6 +27,8 @@
 #include <sys/syscall.h>
 #include "iarmUtil.h"
 
+#include "safec_lib.h"
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -364,6 +366,7 @@ ignore:
  */
 IARM_Result_t IARM_RegisterCall(const char *ownerName, const char *callName, IARM_Call_t handler, void *callCtx)
 {
+    errno_t rc = -1;
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
     IARM_Ctx_t *grpCtx = m_grpCtx;
     IARM_Ctx_t * cctx = (IARM_Ctx_t *)grpCtx;
@@ -398,7 +401,12 @@ IARM_Result_t IARM_RegisterCall(const char *ownerName, const char *callName, IAR
         callInfo->cctx = cctx;
         callInfo->callCtx = callCtx;
         callInfo->handler = handler;
-        sprintf(callInfo->callName, callName);
+        
+	rc = strcpy_s(callInfo->callName,sizeof(callInfo->callName), callName);
+	if(rc!=EOK)
+	{
+		ERR_CHK(rc);
+	}
 
         if(!dbus_connection_add_filter(cctx->conn, &dbusCallHandler, (void *)callInfo, &free))
         {
@@ -457,6 +465,7 @@ IARM_Result_t IARM_Call(const char *ownerName,  const char *funcName, void *arg,
  */
 IARM_Result_t IARM_CallWithTimeout(const char *ownerName,  const char *funcName, void *arg, int timeout, int *ret)
 {
+    errno_t rc = -1;
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
     IARM_Ctx_t *grpCtx = m_grpCtx;
     IARM_Ctx_t * cctx = (IARM_Ctx_t *)grpCtx;
@@ -479,8 +488,11 @@ IARM_Result_t IARM_CallWithTimeout(const char *ownerName,  const char *funcName,
     {
         char serverName[IARM_MAX_NAME_LEN] = {0};
 
-        strcpy(serverName, "process.iarm.");
-        strcpy(&serverName[13], ownerName);
+        rc = sprintf_s(serverName, sizeof(serverName), "process.iarm.%s", ownerName);
+	if(rc < EOK)
+	{
+		ERR_CHK(rc);
+	}
 
         // create a new method call and check for errors
         msg = dbus_message_new_method_call(serverName, // target for the method call
@@ -587,9 +599,14 @@ IARM_Result_t IARM_CallWithTimeout(const char *ownerName,  const char *funcName,
 
         dbus_message_iter_recurse(&arglist, &arraylist);
         dbus_message_iter_get_fixed_array(&arraylist, (void *)&returnArg, (int *)&size);
+        
+	rc = memcpy_s(arg, size, returnArg, size);
+        if(rc!=EOK)
+        {
+                ERR_CHK(rc);
+        }
 
-        memcpy(arg, returnArg, size);
-        returnArg = (unsigned char *) arg;
+	returnArg = (unsigned char *) arg;
 
          // free reply message
         dbus_message_unref(replyMsg);
@@ -1021,6 +1038,7 @@ void *dispatchThreadMethodCall(void *arg)
  */
 IARM_Result_t IARM_Init(const char *groupName, const char *memberName)
 {
+    errno_t rc = -1;
     IARM_Result_t retCode = IARM_RESULT_IPCCORE_FAIL;
      IARM_Ctx_t *cctx = NULL;
     DBusError err;
@@ -1053,6 +1071,7 @@ IARM_Result_t IARM_Init(const char *groupName, const char *memberName)
     if (retCode == IARM_RESULT_SUCCESS)
     {            
         memset(cctx, 0, sizeof(IARM_Ctx_t));
+	
         cctx->isActive = _IARM_CTX_HEADER_MAGIC;
            
         pthread_mutex_init(&(cctx->mutexConn),NULL);
@@ -1122,7 +1141,11 @@ IARM_Result_t IARM_Init(const char *groupName, const char *memberName)
             goto error;
         }
 
-        strcpy(cctx->busName, busName);
+        rc = strcpy_s(cctx->busName,sizeof(cctx->busName), busName);
+	if(rc!=EOK)
+	{
+		ERR_CHK(rc);
+	}
 
         dbus_error_free(&err); 
         snprintf(busName, IARM_BUS_NAME_MAX_LEN - 1, "%s%s%s", "process.iarm.", memberName, ".Event");
@@ -1152,8 +1175,16 @@ IARM_Result_t IARM_Init(const char *groupName, const char *memberName)
         dbus_bus_add_match(cctx->conn, "interface='iarm.signal.Type'", NULL);
         dbus_bus_add_match(cctx->conn, "interface='iarm.method.Type'", NULL);
 
-                 sprintf(cctx->groupName, "%s", groupName);
-                 sprintf(cctx->memberName, "%s", memberName);
+                 rc = strcpy_s(cctx->groupName,sizeof(cctx->groupName), groupName);
+		 if(rc!=EOK)
+		 {
+			 ERR_CHK(rc);
+		 }
+                 rc = strcpy_s(cctx->memberName,sizeof(cctx->memberName), memberName);
+		 if(rc!=EOK)
+                 {	
+                         ERR_CHK(rc);
+                 }
 
                      m_grpCtx = cctx;
         retCode = IARM_RESULT_SUCCESS;

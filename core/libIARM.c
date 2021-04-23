@@ -44,6 +44,8 @@ extern "C"
 #include "libIARMCore.h"
 #include "libIBusDaemonInternal.h"
 
+#include "safec_lib.h"
+
 #define _IARM_MEM_DEBUG
 #define _IARM_CTX_HEADER_MAGIC  0xCABFACE1
 
@@ -661,6 +663,7 @@ IARM_Result_t IARM_UnRegisterListner(const char *ownerName, IARM_EventId_t event
  */
 IARM_Result_t IARM_Init(const char *groupName, const char *memberName)
 {
+     errno_t rc = -1;
      DirectResult dRet = DR_OK;
      IARM_Result_t retCode = IARM_RESULT_SUCCESS;
      IARM_Ctx_t *cctx = NULL;
@@ -686,8 +689,17 @@ IARM_Result_t IARM_Init(const char *groupName, const char *memberName)
 
              if (dRet == DR_OK) {
                  dRet = cctx->dale->EnterComa( cctx->dale, groupName, &cctx->coma );
-                 sprintf(cctx->groupName, "%s", groupName);
-                 sprintf(cctx->memberName, "%s", memberName);
+                 
+		 rc = strcpy_s(cctx->groupName,sizeof(cctx->groupName), groupName);
+		 if(rc!=EOK)
+		 {
+			 ERR_CHK(rc);
+		 }
+                 rc = strcpy_s(cctx->memberName,sizeof(cctx->memberName), memberName);
+		 if(rc!=EOK)
+                 {
+                         ERR_CHK(rc);
+                 }
 
                  if (dRet == DR_OK) {
                      cctx->isActive = _IARM_CTX_HEADER_MAGIC;

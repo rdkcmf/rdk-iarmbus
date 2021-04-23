@@ -40,6 +40,8 @@
 #include "libIBusDaemonInternal.h"
 #include "iarmUtil.h"
 
+#include "safec_lib.h"
+
 typedef struct _IARM_Bus_CallContext_t {
 	char ownerName[IARM_MAX_NAME_LEN];
 	char methodName[IARM_MAX_NAME_LEN];
@@ -100,7 +102,7 @@ int log(const char *format, ...)
 IARM_Result_t IARM_Bus_Init(const char *name)
 {
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
-
+    errno_t rc = -1;
 
     IARM_ASSERT(!m_initialized && !m_connected);
 
@@ -112,7 +114,13 @@ IARM_Result_t IARM_Bus_Init(const char *name)
         retCode = IARM_Init(IARM_BUS_NAME, name);
         if (IARM_RESULT_SUCCESS == retCode) {
             IARM_Malloc(IARM_MEMTYPE_PROCESSLOCAL, sizeof(IARM_Bus_Member_t), (void **) &m_member);
-            sprintf(m_member->selfName, "%s", name);
+
+	    rc = sprintf_s(m_member->selfName,sizeof(m_member->selfName), "%s", name);
+	    if(rc < EOK)
+	    {
+		    ERR_CHK(rc);
+	    }
+
             m_member->pid = getpid();
             m_member->gctx = gctx;
 
@@ -268,6 +276,7 @@ IARM_Result_t IARM_Bus_Disconnect(void)
  */
 IARM_Result_t IARM_Bus_BroadcastEvent(const char *ownerName, IARM_EventId_t eventId, void *data, size_t len)
 {
+    errno_t rc = -1;
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
 
     IARM_ASSERT(m_initialized && m_connected);
@@ -291,7 +300,13 @@ IARM_Result_t IARM_Bus_BroadcastEvent(const char *ownerName, IARM_EventId_t even
 		strncpy(eventData->owner, ownerName, IARM_MAX_NAME_LEN);
 		eventData->id = eventId;
 		eventData->len = len;
-		memcpy(&eventData->data, data, len);
+		
+		rc = memcpy_s(&eventData->data,sizeof(IARM_EventData_t) + len , data, len);
+		if(rc!=EOK)
+		{
+			ERR_CHK(rc);
+		}
+
 		//log("[%s\r\n", __FUNCTION__);
         retCode = IARM_NotifyEvent(ownerName, (IARM_EventId_t)eventId, (void *)eventData);
         if (retCode != IARM_RESULT_SUCCESS) {
@@ -618,6 +633,7 @@ IARM_Result_t IARM_Bus_RegisterCall(const char *methodName, IARM_BusCall_t handl
 
 IARM_Result_t IARM_Bus_Call_with_IPCTimeout(const char *ownerName,  const char *methodName, void *arg, size_t argLen, int timeout)
 {
+    errno_t rc = -1;
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
 
 	IARM_ASSERT(m_initialized && m_connected);
@@ -635,13 +651,25 @@ IARM_Result_t IARM_Bus_Call_with_IPCTimeout(const char *ownerName,  const char *
         if (retCode == IARM_RESULT_SUCCESS) {
             if(arg != NULL)
             {
-                memcpy(argOut, arg, argLen);
+                
+		rc = memcpy_s(argOut,argLen, arg, argLen);
+		if(rc!=EOK)
+		{
+			ERR_CHK(rc);
+		}
+
             }
             IARM_Result_t retVal = IARM_RESULT_SUCCESS;
             retCode = IARM_CallWithTimeout(ownerName, methodName, argOut, timeout, (int *)&retVal);
             if ((retCode == IARM_RESULT_SUCCESS) && (argOut != NULL))
             {
-                memcpy(arg,argOut,argLen);
+                
+	    	rc = memcpy_s(arg,argLen,argOut,argLen);
+		if(rc!=EOK)
+                {
+                        ERR_CHK(rc);
+                }
+
             }
             IARM_Free(IARM_MEMTYPE_PROCESSLOCAL, argOut);
             if(retCode == IARM_RESULT_SUCCESS)
@@ -666,6 +694,7 @@ IARM_Result_t IARM_Bus_Call_with_IPCTimeout(const char *ownerName,  const char *
 
 IARM_Result_t IARM_Bus_Call(const char *ownerName,  const char *methodName, void *arg, size_t argLen)
 {
+    errno_t rc = -1;
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
 
 	IARM_ASSERT(m_initialized && m_connected);
@@ -683,13 +712,25 @@ IARM_Result_t IARM_Bus_Call(const char *ownerName,  const char *methodName, void
         if (retCode == IARM_RESULT_SUCCESS) {
             if(arg != NULL)
             {
-                memcpy(argOut, arg, argLen);
+                
+		rc = memcpy_s(argOut,argLen, arg, argLen);
+		if(rc!=EOK)
+		{
+			ERR_CHK(rc);
+		}
+
             }
             IARM_Result_t retVal = IARM_RESULT_SUCCESS;
             retCode = IARM_Call(ownerName, methodName, argOut, (int *)&retVal);
             if ((retCode == IARM_RESULT_SUCCESS) && (argOut != NULL))
             {
-                memcpy(arg,argOut,argLen);
+                
+		rc = memcpy_s(arg,argLen,argOut,argLen);
+		if(rc!=EOK)
+                {
+                        ERR_CHK(rc);
+                }
+
             }
             IARM_Free(IARM_MEMTYPE_PROCESSLOCAL, argOut);
             if(retCode == IARM_RESULT_SUCCESS)
@@ -749,6 +790,7 @@ IARM_Result_t IARM_Bus_RegisterEvent(int maxEventId)
 
 IARM_Result_t IARM_BusDaemon_RequestOwnership(IARM_Bus_ResrcType_t resrcType)
 {
+    errno_t rc = -1;
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
     //log("Entering IARM_BusDaemon_RequestOwnership\r\n");
 
@@ -778,7 +820,13 @@ IARM_Result_t IARM_BusDaemon_RequestOwnership(IARM_Bus_ResrcType_t resrcType)
 
     if (retCode == IARM_RESULT_SUCCESS && m_initialized && m_connected) {
         IARM_Bus_Daemon_RequestOwnership_Param_t  req;
-        memcpy(&req.requestor, m_member, sizeof(IARM_Bus_Member_t));
+        
+	rc = memcpy_s(&req.requestor,sizeof(req.requestor), m_member, sizeof(IARM_Bus_Member_t));
+	if(rc!=EOK)
+	{
+		ERR_CHK(rc);
+	}
+
 		req.resrcType = resrcType;
         req.rpcResult = IARM_RESULT_SUCCESS;
 
@@ -811,6 +859,7 @@ IARM_Result_t IARM_BusDaemon_RequestOwnership(IARM_Bus_ResrcType_t resrcType)
  */
 IARM_Result_t IARM_BusDaemon_ReleaseOwnership(IARM_Bus_ResrcType_t resrcType)
 {
+    errno_t rc = -1;
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
     /*log("Entering IARM_BusDaemon_ReleaseOwnership\r\n");*/
 
@@ -827,7 +876,13 @@ IARM_Result_t IARM_BusDaemon_ReleaseOwnership(IARM_Bus_ResrcType_t resrcType)
 
     if (m_initialized && m_connected) {
     	IARM_Bus_Daemon_ReleaseOwnership_Param_t req;
-        memcpy(&req.requestor, m_member, sizeof(IARM_Bus_Member_t));
+        
+	rc = memcpy_s(&req.requestor,sizeof(req.requestor), m_member, sizeof(IARM_Bus_Member_t));
+	if(rc!=EOK)
+	{
+		ERR_CHK(rc);
+	}
+
 		req.resrcType = resrcType;
         req.rpcResult = IARM_RESULT_SUCCESS;
 		retCode = IARM_Bus_Call(IARM_BUS_DAEMON_NAME, IARM_BUS_DAEMON_API_ReleaseOwnership, &req, sizeof(req));

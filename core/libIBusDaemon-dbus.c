@@ -41,6 +41,7 @@ extern "C"
 
 #include "libIARMCore.h"
 
+#include "safec_lib.h"
 
 #define g_list_top(list) ((list))
 
@@ -134,7 +135,13 @@ static IARM_Result_t _RegisterMember(void *arg)
 {
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
 	IARM_Bus_Member_t *member = (IARM_Bus_Member_t *) malloc(sizeof(IARM_Bus_Member_t));
-    memcpy(member, arg, sizeof(IARM_Bus_Member_t));
+    
+    errno_t rc = -1;
+    rc = memcpy_s(member,sizeof(IARM_Bus_Member_t), arg, sizeof(IARM_Bus_Member_t));
+    if(rc!=EOK)
+    {
+	    ERR_CHK(rc);
+    }
 	
     //log("Entering [%s] - [%s]\r\n", __FUNCTION__, member->selfName);
     

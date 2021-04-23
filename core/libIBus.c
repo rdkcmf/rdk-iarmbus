@@ -39,6 +39,8 @@
 #include "libIBusDaemonInternal.h"
 #include "iarmUtil.h"
 
+#include "safec_lib.h"
+
 typedef struct _IARM_Bus_CallContext_t {
 	char ownerName[IARM_MAX_NAME_LEN];
 	char methodName[IARM_MAX_NAME_LEN];
@@ -102,6 +104,7 @@ int log(const char *format, ...)
 
 IARM_Result_t IARM_Bus_Init(const char *name)
 {
+    errno_t rc = -1;
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
 
 
@@ -114,7 +117,13 @@ IARM_Result_t IARM_Bus_Init(const char *name)
 		void *gctx = NULL;
 		IARM_Init(IARM_BUS_NAME, name);
 		IARM_Malloc(IARM_MEMTYPE_PROCESSSHARE, sizeof(IARM_Bus_Member_t), (void **) &m_member);
-		sprintf(m_member->selfName, "%s", name);
+		
+		rc = strcpy_s(m_member->selfName,sizeof(m_member->selfName), name);
+		if(rc!=EOK)
+		{
+			ERR_CHK(rc);
+		}
+
 		m_member->pid = getpid();
 		m_member->gctx = gctx;
 
@@ -268,6 +277,7 @@ IARM_Result_t IARM_Bus_Disconnect(void)
  */
 IARM_Result_t IARM_Bus_BroadcastEvent(const char *ownerName, IARM_EventId_t eventId, void *data, size_t len)
 {
+    errno_t rc = -1;
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
 
     IARM_ASSERT(m_initialized && m_connected);
@@ -285,10 +295,22 @@ IARM_Result_t IARM_Bus_BroadcastEvent(const char *ownerName, IARM_EventId_t even
 	else {
         IARM_EventData_t *eventData = NULL;
         IARM_Malloc(IARM_MEMTYPE_PROCESSSHARE, sizeof(IARM_EventData_t) + len, (void **)&eventData);
-		strncpy(eventData->owner, ownerName, IARM_MAX_NAME_LEN);
+	
+	rc=strcpy_s(eventData->owner,IARM_MAX_NAME_LEN, ownerName);
+	if(rc!=EOK)
+                {
+                        ERR_CHK(rc);
+                }
+
 		eventData->id = eventId;
 		eventData->len = len;
-		memcpy(&eventData->data, data, len);
+		
+		rc = memcpy_s(&eventData->data,sizeof(eventData->data), data, len);
+		if(rc!=EOK)
+		{
+			ERR_CHK(rc);
+		}
+
 		/*log("[%s\r\n", __FUNCTION__);*/
         IARM_NotifyEvent(ownerName, (IARM_EventId_t)eventId, (void *)eventData);
     }
@@ -493,6 +515,7 @@ IARM_Result_t IARM_Bus_RegisterCall(const char *methodName, IARM_BusCall_t handl
 
 IARM_Result_t IARM_Bus_Call(const char *ownerName,  const char *methodName, void *arg, size_t argLen)
 {
+    errno_t rc = -1;
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
 
 	IARM_ASSERT(m_initialized && m_connected);
@@ -506,12 +529,24 @@ IARM_Result_t IARM_Bus_Call(const char *ownerName,  const char *methodName, void
         if(arg != NULL)
         {
             retCode = IARM_Malloc(IARM_MEMTYPE_PROCESSSHARE, argLen, (void **)&argOut);
-            memcpy(argOut, arg, argLen);
+            
+	    rc = memcpy_s(argOut, argLen, arg, argLen);
+	    if(rc != EOK)
+	    {
+		    ERR_CHK(rc);
+	    }
+
         }
         IARM_Call(ownerName, methodName, argOut, (int *)&retCode);
         if(argOut != NULL)
         {
-            memcpy(arg,argOut,argLen);
+            
+	    rc = memcpy_s(arg, argLen, argOut, argLen);
+	    if(rc != EOK)
+            {
+                    ERR_CHK(rc);
+            }
+
             IARM_Free(IARM_MEMTYPE_PROCESSSHARE, argOut);
         }
     }
