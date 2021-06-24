@@ -897,7 +897,8 @@ IARM_Result_t IARM_RegisterListner(const char *ownerName, IARM_EventId_t eventId
         eventInfo->callCtx = callCtx;
         eventInfo->eventId = eventId;
         eventInfo->listener = listener;
-        strncpy(eventInfo->ownerName, ownerName, IARM_MAX_NAME_LEN);
+        strncpy(eventInfo->ownerName, ownerName, IARM_MAX_NAME_LEN-1);
+	eventInfo->ownerName[IARM_MAX_NAME_LEN-1] = '\0';  //CID:136714 - Buffer size
 
         if(!dbus_connection_add_filter(cctx->conn, &dbusCallHandler, (void *)eventInfo, &free))
         {
@@ -961,7 +962,8 @@ IARM_Result_t IARM_UnRegisterListner(const char *ownerName, IARM_EventId_t event
         snprintf(compId, sizeof(compId), "%s_%d", "IARM_Event", eventId);
 
         eventInfo.eventId = eventId;
-        strncpy(eventInfo.ownerName, ownerName, IARM_MAX_NAME_LEN);
+        strncpy(eventInfo.ownerName, ownerName, IARM_MAX_NAME_LEN -1);
+	eventInfo.ownerName[IARM_MAX_NAME_LEN -1] = '\0';  //CID:136922 - Buffer size
 
         if((pData = g_list_find_custom(cctx->eventRegistry, &eventInfo, _Is_Context_Matching)) == NULL)
         {

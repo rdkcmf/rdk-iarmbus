@@ -297,7 +297,8 @@ IARM_Result_t IARM_Bus_BroadcastEvent(const char *ownerName, IARM_EventId_t even
 	else {
         IARM_EventData_t *eventData = NULL;
         IARM_Malloc(IARM_MEMTYPE_PROCESSLOCAL, sizeof(IARM_EventData_t) + len, (void **)&eventData);
-		strncpy(eventData->owner, ownerName, IARM_MAX_NAME_LEN);
+		strncpy(eventData->owner, ownerName, IARM_MAX_NAME_LEN -1);
+		eventData->owner[IARM_MAX_NAME_LEN -1] = '\0';
 		eventData->id = eventId;
 		eventData->len = len;
 		
@@ -609,8 +610,10 @@ IARM_Result_t IARM_Bus_RegisterCall(const char *methodName, IARM_BusCall_t handl
 
         IARM_Bus_CallContext_t *cctx = NULL;
 		retCode = IARM_Malloc(IARM_MEMTYPE_PROCESSLOCAL, sizeof(*cctx), (void **) &cctx);
-		strncpy(cctx->ownerName, m_member->selfName, IARM_MAX_NAME_LEN);
-		strncpy(cctx->methodName, methodName, IARM_MAX_NAME_LEN);
+		strncpy(cctx->ownerName, m_member->selfName, IARM_MAX_NAME_LEN -1);
+		cctx->ownerName[IARM_MAX_NAME_LEN -1] = '\0';
+		strncpy(cctx->methodName, methodName, IARM_MAX_NAME_LEN -1);
+		cctx->methodName[IARM_MAX_NAME_LEN -1] = '\0';
 		cctx->handler = handler;
         retCode = IARM_RegisterCall(m_member->selfName, methodName, _BusCall_FuncWrapper, (void *)cctx/*callCtx*/);
         {
@@ -1135,8 +1138,10 @@ static IARM_Result_t RegisterPreChange(IARM_Bus_CallContext_t *callCtx)
              (strcmp(callCtx->methodName,IARM_BUS_COMMON_API_SysModeChange)  == 0) ) 
         {    
             //log("Registering Prechange %s-%s\r\n", callCtx->ownerName,callCtx->methodName);   
-            strncpy(callParam.ownerName,callCtx->ownerName, IARM_MAX_NAME_LEN);
-            strncpy(callParam.methodName,callCtx->methodName, IARM_MAX_NAME_LEN);
+            strncpy(callParam.ownerName,callCtx->ownerName, IARM_MAX_NAME_LEN-1);
+	    callParam.ownerName[IARM_MAX_NAME_LEN-1] = '\0';
+            strncpy(callParam.methodName,callCtx->methodName, IARM_MAX_NAME_LEN-1);
+	    callParam.methodName[IARM_MAX_NAME_LEN-1] = '\0';   //CID:136737 - Buffer size
             retCode = IARM_Bus_Call(IARM_BUS_DAEMON_NAME,IARM_BUS_DAEMON_API_RegisterPreChange, &callParam, sizeof(callParam));
             if(retCode != IARM_RESULT_SUCCESS)
                 log("%s failed to invoke RegisterPreChange method with retCode %d \n", __FUNCTION__, retCode);

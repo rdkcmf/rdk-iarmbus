@@ -222,6 +222,10 @@ static IARM_Result_t _RequestOwnership(void *arg)
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
 
     IARM_Bus_Daemon_RequestOwnership_Param_t *reqIn= (IARM_Bus_Daemon_RequestOwnership_Param_t *)arg;
+    if (! reqIn) {
+        log("reqIn is NULL\r\n");
+        return IARM_RESULT_INVALID_PARAM;
+    }
     IARM_Bus_Member_t *registeredMember = _findRegisteredMember(reqIn->requestor.selfName);
 
     if (IS_RESOURCETYPE_VALID(reqIn->resrcType)) {
@@ -256,7 +260,6 @@ static IARM_Result_t _RequestOwnership(void *arg)
         retCode = IARM_RESULT_INVALID_PARAM;
     }
 
-    if(reqIn)
     reqIn->rpcResult = retCode;
     return retCode;
 }
@@ -268,6 +271,12 @@ static IARM_Result_t _ReleaseOwnership(void *arg)
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
 
     IARM_Bus_Daemon_ReleaseOwnership_Param_t *reqIn= (IARM_Bus_Daemon_ReleaseOwnership_Param_t *)arg;
+
+    if (! reqIn) {
+        log("reqIn is NULL\r\n");
+        return IARM_RESULT_INVALID_PARAM;
+    }
+
     IARM_Bus_Member_t *registeredMember = _findRegisteredMember(reqIn->requestor.selfName);
 
     if (IS_RESOURCETYPE_VALID(reqIn->resrcType)) {
@@ -293,7 +302,6 @@ static IARM_Result_t _ReleaseOwnership(void *arg)
         retCode = IARM_RESULT_INVALID_PARAM;
     }
 
-    if(reqIn)
     reqIn->rpcResult = retCode;
     return retCode;
 }
