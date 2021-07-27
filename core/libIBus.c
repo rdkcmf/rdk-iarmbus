@@ -305,7 +305,7 @@ IARM_Result_t IARM_Bus_BroadcastEvent(const char *ownerName, IARM_EventId_t even
 		eventData->id = eventId;
 		eventData->len = len;
 		
-		rc = memcpy_s(&eventData->data,sizeof(eventData->data), data, len);
+		rc = memcpy_s(&eventData->data, len, data, len);
 		if(rc!=EOK)
 		{
 			ERR_CHK(rc);
