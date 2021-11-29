@@ -434,21 +434,18 @@ IARM_Result_t IARM_Bus_UnRegisterEventHandler(const char *ownerName, IARM_EventI
 		GList *event_list = g_list_first(m_eventHandlerList);
 		while(event_list != NULL) {
 			cctx = (IARM_Bus_EventContext_t *)event_list->data;
+            event_list = g_list_next(event_list);
 			if (strncmp(cctx->ownerName, ownerName,IARM_MAX_NAME_LEN) == 0 && cctx->eventId == eventId) {
 				//log("Event Handler [%s][%d] is removed\r\n", ownerName, eventId);
-				event_list = g_list_next(event_list);
                 m_eventHandlerList = g_list_remove(m_eventHandlerList, (void *)cctx);
 			    IARM_Free(IARM_MEMTYPE_PROCESSLOCAL, (void *)cctx);
-	       		retCode = IARM_UnRegisterListner(ownerName, (IARM_EventId_t)eventId);
-                if (retCode != IARM_RESULT_SUCCESS) {
-                    log("%s failed remove listener for [%s][%d] with IARM Core Handler \r\n", __FUNCTION__, ownerName, eventId);
-                }
 			}
-			else
-			{
-				event_list = g_list_next(event_list);
-    		}	
 		}
+        retCode = IARM_UnRegisterListner(ownerName, (IARM_EventId_t)eventId);
+        if (retCode != IARM_RESULT_SUCCESS)
+             log("%s failed remove listener for [%s][%d] with IARM Core Handler \r\n", __FUNCTION__, ownerName, eventId);
+        else
+             log("%s Listener removed for [%s][%d] with IARM Core Handler \r\n", __FUNCTION__, ownerName, eventId); 
     }
     else {
         retCode = IARM_RESULT_INVALID_STATE;
