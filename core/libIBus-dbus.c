@@ -1171,7 +1171,7 @@ static void _EventHandler_FuncWrapper (void *ctx, void *arg)
     IARM_Bus_EventContext_t *cctx = NULL;
     
     	
-	if (event_list != NULL){
+	if (event_list != NULL  && eventData != NULL){
 		do	
         {
 		cctx = (IARM_Bus_EventContext_t *)event_list->data;
