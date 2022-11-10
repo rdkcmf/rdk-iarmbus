@@ -645,7 +645,7 @@ IARM_Result_t IARM_Bus_Call_with_IPCTimeout(const char *ownerName,  const char *
         
         //log("Final call to %s-%s\r\n", ownerName, methodName);
 
-        /* even if there is no arg we still need to send 12 byte header allocated by IARM_Malloc, in this case use 1 byte dummy arg */
+        /* even if there is no arg we still need to send _IARM_MEM_EXTRA_ALLOC_SIZE byte header allocated by IARM_Malloc, in this case use 1 byte dummy arg */
         retCode = IARM_Malloc(IARM_MEMTYPE_PROCESSLOCAL, (arg != NULL) ? argLen : 1, (void **)&argOut);
         
         if (retCode == IARM_RESULT_SUCCESS) {
@@ -706,7 +706,7 @@ IARM_Result_t IARM_Bus_Call(const char *ownerName,  const char *methodName, void
         
         //log("Final call to %s-%s\r\n", ownerName, methodName);
 
-        /* even if there is no arg we still need to send 12 byte header allocated by IARM_Malloc, in this case use 1 byte dummy arg */
+        /* even if there is no arg we still need to send _IARM_MEM_EXTRA_ALLOC_SIZE byte header allocated by IARM_Malloc, in this case use 1 byte dummy arg */
         retCode = IARM_Malloc(IARM_MEMTYPE_PROCESSLOCAL, (arg != NULL) ? argLen : 1, (void **)&argOut);
         
         if (retCode == IARM_RESULT_SUCCESS) {

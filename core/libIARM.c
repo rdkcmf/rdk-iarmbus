@@ -46,6 +46,8 @@ extern "C"
 
 #include "safec_lib.h"
 
+#define _IARM_MEM_MAGIC_SIZE    8
+
 #define _IARM_MEM_DEBUG
 #define _IARM_CTX_HEADER_MAGIC  0xCABFACE1
 
@@ -60,7 +62,7 @@ extern "C"
 #define IARM_GrpCtx_IsValid(cctx) ((cctx) && (cctx->isActive == _IARM_CTX_HEADER_MAGIC))
 
 #ifdef _IARM_MEM_DEBUG
-#define IARM_GetMemType(ptr)  (*((unsigned int *)(((char *)ptr) - 8)) - _IARM_MEM_HEADER_MAGIC)
+#define IARM_GetMemType(ptr)  (*((unsigned int *)(((char *)ptr) - _IARM_MEM_MAGIC_SIZE)) - _IARM_MEM_HEADER_MAGIC)
 #endif
 
 
@@ -126,7 +128,7 @@ IARM_Result_t IARM_Malloc(IARM_MemType_t type, size_t size, void **ptr)
     void *alloc = NULL;
 
 #ifdef _IARM_MEM_DEBUG
-    size+=8;
+    size += _IARM_MEM_MAGIC_SIZE;
 #endif
     IARM_Ctx_t *grpCtx = m_grpCtx;
     IARM_Ctx_t * cctx = (IARM_Ctx_t *)grpCtx;
@@ -156,7 +158,7 @@ IARM_Result_t IARM_Malloc(IARM_MemType_t type, size_t size, void **ptr)
 #ifdef _IARM_MEM_DEBUG
         unsigned int *p = (unsigned int *)alloc;
         *p = _IARM_MEM_HEADER_MAGIC + type;
-        alloc = ((char *)alloc) + 8;
+        alloc = ((char *)alloc) + _IARM_MEM_MAGIC_SIZE;
 #endif
     }
 
@@ -200,7 +202,7 @@ IARM_Result_t IARM_Free(IARM_MemType_t type, void *alloc)
     if (retCode == IARM_RESULT_SUCCESS) {
         if (alloc != NULL) {
 #ifdef _IARM_MEM_DEBUG
-            alloc = ((char *)alloc) - 8;
+            alloc = ((char *)alloc) - _IARM_MEM_MAGIC_SIZE;
             unsigned int *p = (unsigned int *)alloc;
             int hType  = *p - _IARM_MEM_HEADER_MAGIC;
             IARM_ASSERT(hType == type);

@@ -17,6 +17,7 @@
  * limitations under the License.
 */
 
+#include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <assert.h>
@@ -47,12 +48,17 @@ extern "C"
 #include <stdlib.h>
 #include "iarmUtil.h"
 
+#define _IARM_MEM_MAGIC_SIZE    8
+#define _IARM_MEM_PREFIX_SIZE   sizeof(size_t)
 
 #define _IARM_MEM_DEBUG
 #define _IARM_CTX_HEADER_MAGIC  0xCABFACE1
 
 #ifdef _IARM_MEM_DEBUG
 #define _IARM_MEM_HEADER_MAGIC  0xBADBEEF0
+#define _IARM_MEM_EXTRA_ALLOC_SIZE (_IARM_MEM_MAGIC_SIZE + _IARM_MEM_PREFIX_SIZE)
+#else
+#define _IARM_MEM_EXTRA_ALLOC_SIZE (_IARM_MEM_PREFIX_SIZE)
 #endif
 #define IARM_CALL_PREFIX "_IARMC"
 #define IARM_EVENT_PREFIX "_IARME"
@@ -62,11 +68,10 @@ extern "C"
 #define IARM_GrpCtx_IsValid(cctx) ((cctx) && (cctx)->isActive == _IARM_CTX_HEADER_MAGIC)
 
 #ifdef _IARM_MEM_DEBUG
-#define IARM_GetMemType(ptr)  (*((unsigned int *)(((char *)ptr) - 8)) - _IARM_MEM_HEADER_MAGIC)
-#define IARM_GetSize(ptr)  (*((unsigned int *)(((char *)ptr) - 12)))
-#else
-#define IARM_GetSize(ptr)  (*((unsigned int *)(((char *)ptr) - 4)))
+#define IARM_GetMemType(ptr)  (*((unsigned int *)(((char *)ptr) - _IARM_MEM_MAGIC_SIZE)) - _IARM_MEM_HEADER_MAGIC)
 #endif
+
+#define IARM_GetSize(ptr)  (*((size_t *)(((char *)ptr) - _IARM_MEM_EXTRA_ALLOC_SIZE)))
 
 #define METHOD_CALL_EXIT (1)
 #define DISPATCH_EXIT (1<<1)
@@ -81,20 +86,20 @@ typedef struct _Component_Node_t {
 } Component_Node_t;
 
 typedef struct _IARM_Ctxt_t {
-     unsigned int   isActive;
-     char           groupName[IARM_MAX_NAME_LEN]; 
-     char           memberName[IARM_MAX_NAME_LEN];
-     GList 			*compList;
-     DBusConnection *conn;
-     DBusConnection *connMethodCall;
-     DBusConnection *connEvent;
-     pthread_t      thread;
-     pthread_t      threadMethodCall;
      pthread_mutex_t mutexConn;
-     pthread_cond_t condConn;
-     int            exitStatus;
-     char           busName[IARM_BUS_NAME_MAX_LEN];
-     GList *        eventRegistry; 
+     pthread_cond_t  condConn;
+     pthread_t       thread;
+     pthread_t       threadMethodCall;
+     char            groupName[IARM_MAX_NAME_LEN];
+     char            memberName[IARM_MAX_NAME_LEN];
+     GList           *compList;
+     GList *         eventRegistry;
+     DBusConnection  *conn;
+     DBusConnection  *connMethodCall;
+     DBusConnection  *connEvent;
+     unsigned int    isActive;
+     int             exitStatus;
+     char            busName[IARM_BUS_NAME_MAX_LEN];
 } IARM_Ctx_t;
 
 static IARM_Ctx_t *m_grpCtx = NULL;
@@ -139,10 +144,10 @@ IARM_Result_t IARM_Malloc(IARM_MemType_t type, size_t size, void **ptr)
     void *alloc = NULL;
     size_t requestedSize = size;
 
-    size+=4; /* DBus needs to know the size of the allocation so that it can pass the
-                object by value therefore we code it in the prefix */
+    size += _IARM_MEM_PREFIX_SIZE; /* DBus needs to know the size of the allocation so that it can pass the
+                                      object by value therefore we code it in the prefix */
 #ifdef _IARM_MEM_DEBUG
-    size+=8;
+    size += _IARM_MEM_MAGIC_SIZE;
 #endif
 
     switch(type)
@@ -159,14 +164,14 @@ IARM_Result_t IARM_Malloc(IARM_MemType_t type, size_t size, void **ptr)
 
     if (alloc != NULL)
     {
-        unsigned int *p = (unsigned int *)alloc;
-        *p = (unsigned int) requestedSize;
-        alloc = ((char *)alloc) + 4;
+        size_t *p = (size_t *)alloc;
+        *p = requestedSize;
+        alloc = ((char *)alloc) + _IARM_MEM_PREFIX_SIZE;
        
 #ifdef _IARM_MEM_DEBUG
-        p = (unsigned int *)alloc;
-        *p = _IARM_MEM_HEADER_MAGIC + type;
-        alloc = ((char *)alloc) + 8;
+        unsigned int *m = (unsigned int *)alloc;
+        *m = _IARM_MEM_HEADER_MAGIC + type;
+        alloc = ((char *)alloc) + _IARM_MEM_MAGIC_SIZE;
 #endif
 
     *ptr = alloc;
@@ -195,7 +200,7 @@ IARM_Result_t IARM_Free(IARM_MemType_t type, void *alloc)
     {
 
 #ifdef _IARM_MEM_DEBUG
-            alloc = ((char *)alloc) - 8;
+            alloc = ((char *)alloc) - _IARM_MEM_MAGIC_SIZE;
             unsigned int *p = (unsigned int *)alloc;
             int hType  = *p - _IARM_MEM_HEADER_MAGIC;
 /*        IARM_ASSERT(hType == type);*/
@@ -203,7 +208,7 @@ IARM_Result_t IARM_Free(IARM_MemType_t type, void *alloc)
         {
             }
 #endif
-        alloc = ((char *)alloc) - 4; /* dBus size header */
+        alloc = ((char *)alloc) - _IARM_MEM_PREFIX_SIZE; /* dBus size header */
         switch(type)
         {
                 case IARM_MEMTYPE_PROCESSLOCAL:
@@ -331,7 +336,7 @@ DBusHandlerResult dbusCallHandler(DBusConnection *connection, DBusMessage *msg, 
                     
         dbus_message_iter_recurse(&arglist, &arraylist);
         dbus_message_iter_get_fixed_array(&arraylist, (void *)&callArg, &size);
-        callArg += 12;
+        callArg += _IARM_MEM_EXTRA_ALLOC_SIZE;
         callInfo->handler(callInfo->callCtx, 0, (void *)callArg, (void *)msg);
         return DBUS_HANDLER_RESULT_HANDLED;   
         }
@@ -474,7 +479,7 @@ IARM_Result_t IARM_CallWithTimeout(const char *ownerName,  const char *funcName,
     DBusMessageIter arglist, arraylist;
     DBusMessage *replyMsg;
     DBusError error;
-    size_t size;
+    uint32_t size;
     unsigned char *byteIndex = (unsigned char *)arg, *returnArg;
 
     if (!IARM_GrpCtx_IsValid(cctx) || ownerName == NULL || funcName == NULL)
@@ -509,9 +514,9 @@ IARM_Result_t IARM_CallWithTimeout(const char *ownerName,  const char *funcName,
         /* append arguments onto signal */
         dbus_message_iter_init_append(msg, &arglist);
 
-        size = (size_t)IARM_GetSize(arg);
-        size += 12; /* include prefix */
-        byteIndex -= 12;
+        size = (uint32_t) IARM_GetSize(arg);
+        size += _IARM_MEM_EXTRA_ALLOC_SIZE; /* include prefix */
+        byteIndex -= _IARM_MEM_EXTRA_ALLOC_SIZE;
 
         if (!dbus_message_iter_append_basic(&arglist, DBUS_TYPE_UINT32 , &size))
         {
@@ -595,7 +600,7 @@ IARM_Result_t IARM_CallWithTimeout(const char *ownerName,  const char *funcName,
             log("%s Error Reply argument is malformed\n", __FUNCTION__); 
         }
 
-        size -= 12; /* doesn't include prefix this time */
+        size -= _IARM_MEM_EXTRA_ALLOC_SIZE; /* doesn't include prefix this time */
 
         dbus_message_iter_recurse(&arglist, &arraylist);
         dbus_message_iter_get_fixed_array(&arraylist, (void *)&returnArg, (int *)&size);
@@ -784,7 +789,7 @@ IARM_Result_t IARM_NotifyEvent(const char *ownerName,  IARM_EventId_t eventId, v
         DBusMessage* msg;
         DBusMessageIter arglist, arraylist;
         dbus_uint32_t serial = 0;
-        size_t size;
+        uint32_t size;
 
         // create a signal & check for errors 
         msg = dbus_message_new_signal(  "/iarm/signal/Object", // object name of the signal
@@ -813,7 +818,7 @@ IARM_Result_t IARM_NotifyEvent(const char *ownerName,  IARM_EventId_t eventId, v
             dbus_message_unref(msg);
             return IARM_RESULT_INVALID_PARAM;
         }
-        size = (size_t)IARM_GetSize(arg);
+        size = (uint32_t)IARM_GetSize(arg);
 
         if (!dbus_message_iter_append_basic(&arglist, DBUS_TYPE_UINT32 , &size))
         {
